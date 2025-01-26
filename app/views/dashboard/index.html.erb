@@ -3,22 +3,22 @@
     <h1 class="mb-4">Trading Panel</h1>
     <div class="row">
       <div class="col mb-3">
-        <%= link_to trades_buy_path, class: 'btn btn-success btn-lg rounded-pill px-5 text-nowrap' do %>
+        <%= link_to trades_buy_path, class: 'btn btn-success btn-lg rounded-pill px-5 text-nowrap buy_btn' do %>
           <i class="fa-solid fa-up-long me-2"></i> Buy
         <% end %>
       </div>
       <div class="col mb-3">
-        <%= link_to trades_sell_path, class: 'btn btn-danger btn-lg rounded-pill px-5 text-nowrap' do %>
+        <%= link_to trades_sell_path, class: 'btn btn-danger btn-lg rounded-pill px-5 text-nowrap sell_btn' do %>
           <i class="fa-solid fa-down-long me-2"></i> Sell
         <% end %>
       </div>
       <div class="col mb-3">
-        <%= link_to trades_square_off_path, class: 'btn btn-primary btn-lg rounded-pill px-5 text-nowrap' do %>
+        <%= link_to trades_square_off_path, class: 'btn btn-primary btn-lg rounded-pill px-5 text-nowrap exit_btn' do %>
           <i class="fa-solid fa-right-from-bracket me-2"></i> Square Off
         <% end %>
       </div>
       <div class="col">
-        <%= link_to trades_reverse_path, class: 'btn btn-dark btn-lg rounded-pill px-5 text-nowrap' do %>
+        <%= link_to trades_reverse_path, class: 'btn btn-dark btn-lg rounded-pill px-5 text-nowrap reverse_btn' do %>
           <i class="fas fa-sync-alt me-2"></i> Reverse
         <% end %>
       </div>
