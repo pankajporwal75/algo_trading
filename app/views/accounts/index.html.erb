@@ -1,12 +1,10 @@
-<p style="color: green"><%= notice %></p>
-
-<h1>Accounts</h1>
+<h1>Account</h1>
 
 <div id="accounts">
   <% @accounts.each do |account| %>
     <%= render account %>
     <p>
-      <%= link_to "Show this account", account %>
+      <%= link_to "Edit account", edit_account_path(account), class: 'btn btn-danger' %>
     </p>
   <% end %>
 </div>

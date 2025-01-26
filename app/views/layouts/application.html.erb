@@ -6,10 +6,19 @@
     <%= csrf_meta_tags %>
     <%= csp_meta_tag %>
     <%= stylesheet_link_tag "application", "data-turbo-track": "reload" %>
+    <%= stylesheet_link_tag "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.9.0/css/all.min.css" %>
     <%= javascript_include_tag "application", "data-turbo-track": "reload" %>
   </head>
 
   <body>
-    <%= yield %>
+    <div class="container">
+      <%= render 'shared/navbar' %>
+      <div class="flash_messages">
+        <%= render 'shared/toastr_flash_new' %>
+      </div>
+      <div class="content-container container">
+        <%= yield %>
+      </div>
+    </div>
   </body>
 </html>

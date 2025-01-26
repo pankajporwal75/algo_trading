@@ -26,6 +26,11 @@ gem "turbo-rails"
 # Hotwire's modest JavaScript framework [https://stimulus.hotwired.dev]
 gem "stimulus-rails"
 
+# Bootstrap
+gem 'bootstrap', '~> 5.3.0'
+gem "sassc-rails"
+gem "font-awesome-sass"
+
 # Build JSON APIs with ease [https://github.com/rails/jbuilder]
 gem "jbuilder"
 

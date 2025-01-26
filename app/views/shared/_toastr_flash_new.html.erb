@@ -1,0 +1,13 @@
+<% unless flash.empty? %>
+  <script type="text/javascript">
+    <% flash.each do |f| %>
+    <% type = get_flash_type(f[0].to_s) %>
+    $.toast({
+      title:"<%= type.titleize %>",
+      message:"<%= f[1] %>",
+      type:"<%= type %>",
+      duration: 5000,// auto-dismiss after 5s
+    });
+    <% end %>
+  </script>
+<% end %>
