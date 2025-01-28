@@ -19,7 +19,7 @@ class TradesController < ApplicationController
             qty = get_quantities_for_set_capital(atm_price[:price]) # Margin for brokerage
             @result = place_order('BUY', security_id, qty)
             if @result[:success]
-              flash[:notice] = 'Buy Order Placed.'
+              flash[:notice] = "Buy Order Placed for #{symbol}, QTY: #{qty}."
             else
               flash[:alert] = @result[:error]
             end
@@ -39,7 +39,37 @@ class TradesController < ApplicationController
   end
   
   def sell
-    flash[:notice] = 'Sell Order Successfull.'
+    if @result[:success]
+      @result = fetch_nifty_atm_strike
+      if @result[:success]
+        symbol = "NIFTY 30 JAN #{@result[:nifty_atm].to_i} PUT"
+        security_id = get_security_id(symbol)
+        atm_price = get_atm_price(security_id)
+        if atm_price[:success]
+          quantities = Account.first.capital / atm_price[:price]
+          if quantities < 25
+            flash[:alert] = 'Capital is not sufficient to buy 1 lots (25 Shares).'
+            return
+          else
+            qty = get_quantities_for_set_capital(atm_price[:price]) # Margin for brokerage
+            @result = place_order('BUY', security_id, qty)
+            if @result[:success]
+              flash[:notice] = "Sell Order Placed for #{symbol}, QTY: #{qty}."
+            else
+              flash[:alert] = @result[:error]
+            end
+          end
+        else
+          flash[:notice] = atm_price[:error]
+          return
+        end
+      else
+        flash[:notice] = @result[:error]
+        return
+      end
+    else
+      flash[:alert] = @result[:error]
+    end
     redirect_to root_path
   end
   
