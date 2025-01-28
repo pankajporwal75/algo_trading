@@ -1,221 +1,115 @@
 class TradesController < ApplicationController
-  before_action :get_active_trades, only: [:buy, :sell]
-  BASE_URL = 'https://api.dhan.co/v2'
-  require 'csv'
 
   def buy
-    if @result[:success]
-      @result = fetch_nifty_atm_strike
-      if @result[:success]
-        symbol = "NIFTY 30 JAN #{@result[:nifty_atm].to_i} CALL"
-        security_id = get_security_id(symbol)
-        atm_price = get_atm_price(security_id)
-        if atm_price[:success]
-          quantities = Account.first.capital / atm_price[:price]
-          if quantities < 25
-            flash[:alert] = 'Capital is not sufficient to buy 1 lots (25 Shares).'
-            return
-          else
-            qty = get_quantities_for_set_capital(atm_price[:price]) # Margin for brokerage
-            @result = place_order('BUY', security_id, qty)
-            if @result[:success]
-              flash[:notice] = "Buy Order Placed for #{symbol}, QTY: #{qty}."
-            else
-              flash[:alert] = @result[:error]
-            end
-          end
-        else
-          flash[:notice] = atm_price[:error]
-          return
-        end
-      else
-        flash[:notice] = @result[:error]
-        return
-      end
-    else
-      flash[:alert] = @result[:error]
-    end
-    redirect_to root_path
+    active_trades = Dhan::ActiveTrades.call
+    return initialize_failure_response(active_trades[:error]) if !active_trades[:success]
+    
+    exit_positions = Dhan::ExitPositions.call(active_trades[:positions])
+    return initialize_failure_response(exit_positions[:error]) if !exit_positions[:success]
+    
+    nifty_price = Dhan::GetPriceQuote.call("IDX_I", 13)
+    return initialize_failure_response(nifty_price[:error]) if !nifty_price[:success]
+  
+    atm_price = Dhan::GetNiftyAtmPrice.call("CALL", nifty_price[:ltp])
+    return initialize_failure_response(atm_price[:error]) if !atm_price[:success]
+    
+    quantities = ENV['CAPITAL'].to_i / atm_price[:ltp]
+    return initialize_failure_response("Capital is not sufficient to buy 1 lots (25 Shares).") if quantities < 25
+    
+    buy_quantities = get_quantities_for_set_capital(atm_price[:ltp]) # Margin for brokerage
+    
+    new_order = Dhan::PlaceOrder.call("BUY", atm_price[:security_id], buy_quantities)
+    return initialize_failure_response(new_order[:error]) if !new_order[:success]
+  
+    redirect_to root_path, notice: "Buy Order Placed for #{atm_price[:symbol]}, QTY: #{buy_quantities}"
   end
   
   def sell
-    if @result[:success]
-      @result = fetch_nifty_atm_strike
-      if @result[:success]
-        symbol = "NIFTY 30 JAN #{@result[:nifty_atm].to_i} PUT"
-        security_id = get_security_id(symbol)
-        atm_price = get_atm_price(security_id)
-        if atm_price[:success]
-          quantities = Account.first.capital / atm_price[:price]
-          if quantities < 25
-            flash[:alert] = 'Capital is not sufficient to buy 1 lots (25 Shares).'
-            return
-          else
-            qty = get_quantities_for_set_capital(atm_price[:price]) # Margin for brokerage
-            @result = place_order('BUY', security_id, qty)
-            if @result[:success]
-              flash[:notice] = "Sell Order Placed for #{symbol}, QTY: #{qty}."
-            else
-              flash[:alert] = @result[:error]
-            end
-          end
-        else
-          flash[:notice] = atm_price[:error]
-          return
-        end
-      else
-        flash[:notice] = @result[:error]
-        return
-      end
-    else
-      flash[:alert] = @result[:error]
-    end
-    redirect_to root_path
+    active_trades = Dhan::ActiveTrades.call
+    return initialize_failure_response(active_trades[:error]) if !active_trades[:success]
+    
+    exit_positions = Dhan::ExitPositions.call(active_trades[:positions])
+    return initialize_failure_response(exit_positions[:error]) if !exit_positions[:success]
+    
+    nifty_price = Dhan::GetPriceQuote.call("IDX_I", 13)
+    return initialize_failure_response(nifty_price[:error]) if !nifty_price[:success]
+  
+    atm_price = Dhan::GetNiftyAtmPrice.call("PUT", nifty_price[:ltp])
+    return initialize_failure_response(atm_price[:error]) if !atm_price[:success]
+    
+    quantities = ENV['CAPITAL'].to_i / atm_price[:ltp]
+    return initialize_failure_response("Capital is not sufficient to buy 1 lots (25 Shares).") if quantities < 25
+    
+    buy_quantities = get_quantities_for_set_capital(atm_price[:ltp]) # Margin for brokerage
+    
+    new_order = Dhan::PlaceOrder.call("BUY", atm_price[:security_id], buy_quantities)
+    return initialize_failure_response(new_order[:error]) if !new_order[:success]
+  
+    redirect_to root_path, notice: "Buy Order Placed for #{atm_price[:symbol]}, QTY: #{buy_quantities}"
   end
   
   def square_off
-    flash[:notice] = 'All Positions Squared Off.'
-    redirect_to root_path
+    active_trades = Dhan::ActiveTrades.call
+    return initialize_failure_response(active_trades[:error]) if !active_trades[:success]
+
+    running_positions = get_running_positions(active_trades[:positions])
+    return initialize_failure_response("No active positions.") if running_positions.blank?
+
+    exit_positions = Dhan::ExitPositions.call(active_trades[:positions])
+    return initialize_failure_response(exit_positions[:error]) if !exit_positions[:success]
+
+    redirect_to root_path, notice: "All positions closed."
   end
   
   def reverse
-    flash[:notice] = 'Active positions has been reversed.'
-    redirect_to root_path
+    active_trades = Dhan::ActiveTrades.call
+    return initialize_failure_response(active_trades[:error]) if !active_trades[:success]
+    
+    running_positions = get_running_positions(active_trades[:positions])
+    return initialize_failure_response("No active positions found to be reversed.") if running_positions.blank?
+
+    exit_positions = Dhan::ExitPositions.call(active_trades[:positions])
+    return initialize_failure_response(exit_positions[:error]) if !exit_positions[:success]
+
+    nifty_price = Dhan::GetPriceQuote.call("IDX_I", 13)
+    return initialize_failure_response(nifty_price[:error]) if !nifty_price[:success]
+
+    option_type = get_new_option_type(running_positions)
+
+    atm_price = Dhan::GetNiftyAtmPrice.call(option_type, nifty_price[:ltp])
+    return initialize_failure_response(atm_price[:error]) if !atm_price[:success]
+
+    quantities = ENV['CAPITAL'].to_i / atm_price[:ltp]
+    return initialize_failure_response("Capital is not sufficient to buy 1 lots (25 Shares).") if quantities < 25
+    
+    buy_quantities = get_quantities_for_set_capital(atm_price[:ltp]) # Margin for brokerage
+    
+    new_order = Dhan::PlaceOrder.call("BUY", atm_price[:security_id], buy_quantities)
+    return initialize_failure_response(new_order[:error]) if !new_order[:success]
+  
+    redirect_to root_path, notice: "Buy Order Placed for #{atm_price[:symbol]}, QTY: #{buy_quantities}"
   end
 
   private
 
-  def get_active_trades
-    connection = Faraday.new(
-    url: "#{BASE_URL}/positions",
-    headers: {
-      'Content-Type' => 'application/json',
-      'access-token' => Account.first.access_token
-    })
-
-    response = connection.get
-    body = JSON.parse(response.body, symbolize_names: true)
-
-    @result = if response.success?
-      { success: true, positions: body }
-    else
-      { success: false, error: body[:errorMessage] }
-    end
-    @result
-  end
-
-  def fetch_nifty_atm_strike
-    connection = Faraday.new(
-      url: "#{BASE_URL}/marketfeed/ltp",
-      headers: {
-        'Content-Type' => 'application/json',
-        'access-token' => Account.first.access_token,
-        'client-id' => Account.first.account_id.to_s
-    })
-
-    request_body = { "IDX_I": [13] }.to_json
-
-    response = connection.post do |req|
-      req.body = request_body
-    end
-
-    body = JSON.parse(response.body, symbolize_names: true)
-    @result = if response.success?
-      nifty_price = body.first[1].first[1].first[1].first[1]
-      atm_option = fetch_atm_by_price(nifty_price)
-      { success: true, nifty_atm: atm_option }
-    else
-      { success: false, error: body[:data].first[1] }
-    end
-  end
-
-  def fetch_atm_by_price(price)
-    remainder = price % 50
-    if remainder == 0
-      atm_price = price
-    elsif remainder < 25
-      atm_price = price - remainder
-    else
-      atm_price = price + (50 - remainder)
-    end
-    atm_price
-  end
-
-  def get_security_id(symbol)
-    csv_path = Rails.root.join('db', 'data', 'dhan_securities_master.csv')
-    CSV.foreach(csv_path, headers: true, header_converters: :symbol) do |row|
-      return row[:sem_smst_security_id] if row[:sem_custom_symbol] == symbol
-    end
-    nil
-  end
-
-  def get_atm_price(security_id)
-    connection = Faraday.new(
-      url: "#{BASE_URL}/marketfeed/ltp",
-      headers: {
-        'Content-Type' => 'application/json',
-        'access-token' => Account.first.access_token,
-        'client-id' => Account.first.account_id.to_s
-    })
-
-    request_body = { "NSE_FNO": [security_id.to_i] }.to_json
-
-    response = connection.post do |req|
-      req.body = request_body
-    end
-
-    body = JSON.parse(response.body, symbolize_names: true)
-    @result = if response.success?
-      price = body.first[1].first[1].first[1].first[1]
-      { success: true, price: price }
-    else
-      { success: false, error: body[:data].first[1] }
-    end
-  end
-
   def get_quantities_for_set_capital(price)
-    amount = Account.first.capital - 200
+    amount = ENV['CAPITAL'].to_i - 200
     qty = (amount / price).floor
     lots = qty/25
     lots * 25
   end
-
-  def place_order(type, security_id, quantity)
-    connection = Faraday.new(
-      url: "#{BASE_URL}/orders",
-      headers: {
-        'Content-Type' => 'application/json',
-        'access-token' => Account.first.access_token,
-        'client-id' => Account.first.account_id.to_s
-    })
-
-    request_body = {
-      "dhanClientId": Account.first.account_id.to_s,
-      "correlationId": "",
-      "transactionType":type,
-      "exchangeSegment":"NSE_FNO",
-      "productType":"MARGIN",
-      "orderType":"MARKET",
-      "validity":"DAY",
-      "securityId":security_id.to_s,
-      "quantity":quantity.to_i,
-      "disclosedQuantity":0,
-      "price":0,
-      "triggerPrice":0,
-      "afterMarketOrder":false
-    }.to_json
-
-    response = connection.post do |req|
-      req.body = request_body
-    end
-
-    body = JSON.parse(response.body, symbolize_names: true)
-    @result = if response.success?
-      { success: true }
-    else
-      { success: false, error: body[:errorMessage] }
-    end
-    @result
-  end
   
+  def initialize_failure_response(message)
+    flash[:alert] = message
+    redirect_to root_path and return
+  end
+
+  def get_running_positions(positions)
+    positions.select { |position| position[:positionType] == "LONG" }
+  end
+
+  def get_new_option_type(positions)
+    position = positions.first
+    position[:drvOptionType] == "CALL" ? "PUT" : "CALL"
+  end
 end
