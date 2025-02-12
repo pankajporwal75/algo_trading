@@ -14,7 +14,7 @@ class TradesController < ApplicationController
     return initialize_failure_response(atm_price[:error]) if !atm_price[:success]
     
     quantities = ENV['CAPITAL'].to_i / atm_price[:ltp]
-    return initialize_failure_response("Capital is not sufficient to buy 1 lots (25 Shares).") if quantities < 25
+    return initialize_failure_response("Capital is not sufficient to buy 1 lots (75 Shares).") if quantities < 75
     
     buy_quantities = get_quantities_for_set_capital(atm_price[:ltp]) # Margin for brokerage
     
@@ -38,7 +38,7 @@ class TradesController < ApplicationController
     return initialize_failure_response(atm_price[:error]) if !atm_price[:success]
     
     quantities = ENV['CAPITAL'].to_i / atm_price[:ltp]
-    return initialize_failure_response("Capital is not sufficient to buy 1 lots (25 Shares).") if quantities < 25
+    return initialize_failure_response("Capital is not sufficient to buy 1 lots (75 Shares).") if quantities < 75
     
     buy_quantities = get_quantities_for_set_capital(atm_price[:ltp]) # Margin for brokerage
     
@@ -80,7 +80,7 @@ class TradesController < ApplicationController
     return initialize_failure_response(atm_price[:error]) if !atm_price[:success]
 
     quantities = ENV['CAPITAL'].to_i / atm_price[:ltp]
-    return initialize_failure_response("Capital is not sufficient to buy 1 lots (25 Shares).") if quantities < 25
+    return initialize_failure_response("Capital is not sufficient to buy 1 lots (75 Shares).") if quantities < 75
     
     buy_quantities = get_quantities_for_set_capital(atm_price[:ltp]) # Margin for brokerage
     
@@ -95,8 +95,8 @@ class TradesController < ApplicationController
   def get_quantities_for_set_capital(price)
     amount = ENV['CAPITAL'].to_i - 200
     qty = (amount / price).floor
-    lots = qty/25
-    lots * 25
+    lots = qty/75
+    lots * 75
   end
   
   def initialize_failure_response(message)

@@ -12,7 +12,7 @@ class Dhan::GetNiftyAtmPrice
 
   def process
     atm_option = find_atm_by_price(price)
-    symbol = "NIFTY 30 JAN #{atm_option.to_i} #{option_type}"
+    symbol = "NIFTY #{ENV['NIFTY_EXPIRY_DATE']} #{atm_option.to_i} #{option_type}"
     security_id = get_security_id(symbol)
     result = Dhan::GetPriceQuote.call("NSE_FNO", security_id)
     result[:security_id] = security_id
